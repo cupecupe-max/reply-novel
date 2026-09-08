@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>우리 반 릴레이 소설 방 📚</title>
-  <!-- 무설정 실시간 분산 DB 라이브러리 -->
-  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <style>
     :root {
       --primary: #4f46e5;
@@ -223,7 +221,7 @@
   <header>
     <h1 id="page-title">📖 우리 반 릴레이 소설 방</h1>
     <div class="header-actions">
-      <span id="sync-indicator" class="sync-status">🟢 실시간 공유 활성화</span>
+      <span id="sync-indicator" class="sync-status">🟢 실시간 연결됨</span>
       <button id="btn-delete-all" class="btn btn-danger admin-only" onclick="confirmDeleteAll()">🗑️ 전체 초기화</button>
       <button id="btn-admin-toggle" class="btn btn-admin" onclick="toggleAdminMode()">🔒 관리자 모드</button>
       <button id="btn-back" class="btn btn-back" style="display: none;" onclick="goHome()">← 방 목록</button>
@@ -236,7 +234,6 @@
       <button class="btn-del-sm" onclick="toggleAdminMode()">관리자 끄기</button>
     </div>
 
-    <!-- 1. 방 목록 화면 -->
     <section id="room-list-view">
       <div class="info-box">
         💡 <strong>이용 방법:</strong> 내 번호 방을 선택해서 들어가세요. 친구들과 번갈아 가며 한 줄씩 소설을 완성해 보세요!
@@ -244,7 +241,6 @@
       <div class="room-grid" id="room-grid"></div>
     </section>
 
-    <!-- 2. 방 상세 화면 -->
     <section id="novel-detail-view">
       <div class="novel-container" id="novel-scroll-box">
         <div class="novel-meta">
@@ -270,46 +266,21 @@
   </main>
 
   <script>
-    // 분산 실시간 네트워크 피어 초기화 (글로벌 피어 서버 자동 연결)
-    const gun = Gun({
-      peers: [
-        'https://gun-manhattan.herokuapp.com/gun',
-        'https://relay.peer.ooo/gun'
-      ]
-    });
-
-    const APP_KEY = "cupecupe_relay_novel_v2026";
+    // 독립형 실시간 클라우드 DB 엔드포인트
+    const BIN_ID = "66dbba71acd3cb34a87e0766";
+    const API_KEY = "$2a$10$tZ/GjA6krh0wG2hGj0E0z.E0mK6x.N5a5R4kM8l1oXy3wN.tD6xeq";
+    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     const ADMIN_PASSWORD = "1234";
-    const TOTAL_ROOMS = 26;
 
+    const TOTAL_ROOMS = 26;
     let currentRoom = null;
-    let roomEntries = {};
+    let novelData = {};
     let isAdmin = false;
 
-    // 26개 방 데이터 초기화
-    for (let i = 1; i <= TOTAL_ROOMS; i++) {
-      roomEntries[i] = {};
-    }
-
+    // 초기 방 목록 즉시 출력
     renderRoomList();
 
-    // GunDB에서 실시간 데이터 구독
-    for (let r = 1; r <= TOTAL_ROOMS; r++) {
-      gun.get(APP_KEY).get('room_' + r).map().on((data, id) => {
-        if (!data || data.deleted) {
-          delete roomEntries[r][id];
-        } else {
-          roomEntries[r][id] = data;
-        }
-
-        if (currentRoom === r) {
-          renderNovelEntries();
-        } else if (!currentRoom) {
-          updateRoomCardBadge(r);
-        }
-      });
-    }
-
+    // ================= [관리자 모드] =================
     function toggleAdminMode() {
       if (isAdmin) {
         isAdmin = false;
@@ -326,12 +297,50 @@
           document.getElementById("btn-admin-toggle").innerText = "🔓 관리자 On";
           document.getElementById("btn-admin-toggle").classList.add("active");
           document.getElementById("admin-banner").style.display = "flex";
-          alert("관리자 권한이 켜졌습니다. (삭제 버튼 표시)");
+          alert("관리자 권한이 켜졌습니다. (삭제 기능 활성화)");
         } else if (pw !== null) {
           alert("비밀번호가 일치하지 않습니다.");
         }
       }
       if (currentRoom) renderNovelEntries();
+    }
+
+    // ================= [클라우드 데이터 동기화] =================
+    async function loadData() {
+      try {
+        const res = await fetch(`${API_URL}/latest`, {
+          headers: { "X-Access-Key": API_KEY }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          novelData = json.record || {};
+          document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
+          if (currentRoom) {
+            renderNovelEntries();
+          } else {
+            renderRoomList();
+          }
+        }
+      } catch (err) {
+        document.getElementById("sync-indicator").innerText = "🟡 동기화 대기 중...";
+      }
+    }
+
+    async function syncToServer() {
+      document.getElementById("sync-indicator").innerText = "저장 중...";
+      try {
+        await fetch(API_URL, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Access-Key": API_KEY
+          },
+          body: JSON.stringify(novelData)
+        });
+        document.getElementById("sync-indicator").innerText = "🟢 저장 완료";
+      } catch (e) {
+        document.getElementById("sync-indicator").innerText = "🔴 저장 재시도 중";
+      }
     }
 
     function renderRoomList() {
@@ -340,24 +349,16 @@
       container.innerHTML = "";
 
       for (let i = 1; i <= TOTAL_ROOMS; i++) {
-        const count = Object.keys(roomEntries[i] || {}).length;
+        const list = novelData[i] || [];
         const card = document.createElement("div");
         card.className = "room-card";
         card.onclick = () => openRoom(i);
         card.innerHTML = `
           <div class="room-number">${i}</div>
           <div class="room-label">${i}번 방</div>
-          <div class="room-count" id="badge-${i}">${count}문장 이어짐</div>
+          <div class="room-count">${list.length}문장 이어짐</div>
         `;
         container.appendChild(card);
-      }
-    }
-
-    function updateRoomCardBadge(r) {
-      const badge = document.getElementById("badge-" + r);
-      if (badge) {
-        const count = Object.keys(roomEntries[r] || {}).length;
-        badge.innerText = `${count}문장 이어짐`;
       }
     }
 
@@ -389,21 +390,18 @@
       if (!container) return;
       container.innerHTML = "";
 
-      const currentList = Object.entries(roomEntries[currentRoom] || {})
-        .map(([id, val]) => ({ id, ...val }))
-        .sort((a, b) => a.time - b.time);
+      const list = novelData[currentRoom] || [];
+      lineCountBadge.innerText = `${list.length}개 문장`;
 
-      lineCountBadge.innerText = `${currentList.length}개 문장`;
-
-      if (currentList.length === 0) {
+      if (list.length === 0) {
         container.innerHTML = `<div class="empty-state">아직 작성된 이야기가 없어요!<br>첫 문장을 적어 이야기를 시작해 보세요 ✨</div>`;
         return;
       }
 
-      currentList.forEach((item) => {
+      list.forEach((item, index) => {
         const row = document.createElement("div");
         row.className = "novel-entry";
-        const delBtn = isAdmin ? `<button class="btn-del-sm" onclick="deleteSingleLine('${item.id}')">삭제</button>` : '';
+        const delBtn = isAdmin ? `<button class="btn-del-sm" onclick="deleteSingleLine(${index})">삭제</button>` : '';
 
         row.innerHTML = `
           <span class="entry-author">${escapeHtml(item.name)}</span>
@@ -417,55 +415,60 @@
       scrollBox.scrollTop = scrollBox.scrollHeight;
     }
 
-    // 새 글 등록 (실시간 DB 저장)
-    function submitLine() {
+    // ================= [새 글 등록] =================
+    async function submitLine() {
       const nameInput = document.getElementById("input-name");
       const lineInput = document.getElementById("input-line");
+      const btn = document.getElementById("btn-submit");
+
       const name = nameInput.value.trim();
       const text = lineInput.value.trim();
 
       if (!name) { alert("이름(또는 번호)을 입력하세요!"); nameInput.focus(); return; }
       if (!text) { alert("소설 내용을 입력하세요!"); lineInput.focus(); return; }
 
-      const newId = 'line_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      btn.disabled = true;
 
-      gun.get(APP_KEY).get('room_' + currentRoom).get(newId).put({
-        name: name,
-        text: text,
-        time: Date.now(),
-        deleted: false
-      });
+      // 1. 화면에 즉시 표시 (지연 없음)
+      if (!novelData[currentRoom]) novelData[currentRoom] = [];
+      novelData[currentRoom].push({ name, text, time: Date.now() });
+      renderNovelEntries();
 
       lineInput.value = "";
+      btn.disabled = false;
       lineInput.focus();
+
+      // 2. 클라우드 DB에 즉시 영구 저장
+      await syncToServer();
     }
 
+    // ================= [삭제 기능 3종] =================
     // 1. 개별 글 삭제
-    function deleteSingleLine(id) {
+    async function deleteSingleLine(index) {
       if (!confirm("이 문장을 삭제하시겠습니까?")) return;
-      gun.get(APP_KEY).get('room_' + currentRoom).get(id).put({ deleted: true });
+      novelData[currentRoom].splice(index, 1);
+      renderNovelEntries();
+      await syncToServer();
     }
 
-    // 2. 방 전체 글 삭제
-    function confirmDeleteRoom() {
+    // 2. 방 전체 삭제
+    async function confirmDeleteRoom() {
       if (!confirm(`정말 [${currentRoom}번 방]의 모든 이야기를 삭제하시겠습니까?`)) return;
-      const ids = Object.keys(roomEntries[currentRoom] || {});
-      ids.forEach(id => {
-        gun.get(APP_KEY).get('room_' + currentRoom).get(id).put({ deleted: true });
-      });
+      novelData[currentRoom] = [];
+      renderNovelEntries();
+      await syncToServer();
     }
 
     // 3. 전체 방 일괄 완전 초기화
-    function confirmDeleteAll() {
+    async function confirmDeleteAll() {
       const chk = prompt("경고: 모든 방의 소설이 한꺼번에 삭제됩니다!\n진행하시려면 '초기화'를 입력하세요:");
       if (chk === "초기화") {
         for (let r = 1; r <= TOTAL_ROOMS; r++) {
-          const ids = Object.keys(roomEntries[r] || {});
-          ids.forEach(id => {
-            gun.get(APP_KEY).get('room_' + r).get(id).put({ deleted: true });
-          });
+          novelData[r] = [];
         }
-        alert("전체 방이 깨끗이 초기화되었습니다.");
+        renderRoomList();
+        await syncToServer();
+        alert("모든 방이 깨끗이 초기화되었습니다.");
       }
     }
 
@@ -476,6 +479,10 @@
     function escapeHtml(str) {
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
+
+    // 2초마다 다른 학생 작성 내용 자동 동기화
+    loadData();
+    setInterval(loadData, 2000);
   </script>
 </body>
 </html>
