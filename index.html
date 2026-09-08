@@ -35,7 +35,6 @@
     }
 
     header h1 { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
-
     .header-actions { display: flex; gap: 0.5rem; align-items: center; }
 
     .btn {
@@ -84,7 +83,6 @@
       line-height: 1.5;
     }
 
-    /* 관리자 알림 배너 */
     .admin-banner {
       display: none;
       background: #ecfdf5;
@@ -99,7 +97,7 @@
       align-items: center;
     }
 
-    /* 1. 메인 26개 방 그리드 */
+    /* 1. 방 그리드 */
     .room-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
@@ -178,7 +176,6 @@
     }
 
     .entry-text { flex: 1; font-size: 1rem; }
-
     .empty-state { text-align: center; color: var(--text-muted); padding: 3rem 0; font-size: 0.95rem; }
 
     .input-form-box {
@@ -209,10 +206,8 @@
     }
 
     .input-author:focus, .input-content:focus { border-color: var(--primary); }
-
     .sync-status { font-size: 0.8rem; color: var(--text-muted); }
 
-    /* 관리자 전용 삭제 버튼 (기본 숨김) */
     .admin-only { display: none !important; }
     body.is-admin .admin-only { display: inline-flex !important; }
 
@@ -227,36 +222,28 @@
   <header>
     <h1 id="page-title">📖 우리 반 릴레이 소설 방</h1>
     <div class="header-actions">
-      <span id="sync-indicator" class="sync-status">🔄 연결 중...</span>
-      
-      <!-- [관리자 기능 3] 전체 글 일괄 삭제 버튼 (메인화면 관리자 전용) -->
-      <button id="btn-delete-all" class="btn btn-danger admin-only" onclick="confirmDeleteAll()">
-        🗑️ 전체 소설 완전 초기화
-      </button>
-
-      <!-- 관리자 모드 On/Off 토글 버튼 -->
+      <span id="sync-indicator" class="sync-status">🔄 연결 확인 중...</span>
+      <button id="btn-delete-all" class="btn btn-danger admin-only" onclick="confirmDeleteAll()">🗑️ 전체 초기화</button>
       <button id="btn-admin-toggle" class="btn btn-admin" onclick="toggleAdminMode()">🔒 관리자 모드</button>
-      
       <button id="btn-back" class="btn btn-back" style="display: none;" onclick="goHome()">← 방 목록</button>
     </div>
   </header>
 
   <main>
-    <!-- 관리자 로그인 알림 배너 -->
     <div id="admin-banner" class="admin-banner">
-      <span>⚙️ <strong>관리자 모드 활성화됨:</strong> 글 개별 삭제 및 방 전체 삭제 권한이 활성화되었습니다.</span>
+      <span>⚙️ <strong>관리자 모드 실행 중:</strong> 글 삭제 권한이 켜져 있습니다.</span>
       <button class="btn-del-sm" onclick="toggleAdminMode()">관리자 끄기</button>
     </div>
 
-    <!-- 1. 방 목록 화면 -->
+    <!-- 1. 방 목록 -->
     <section id="room-list-view">
       <div class="info-box">
-        💡 <strong>이용 방법:</strong> 원하는 방을 선택해서 들어가세요. 자동으로 다른 친구들의 글이 실시간 업데이트됩니다!
+        💡 <strong>이용 방법:</strong> 내 번호 방을 선택해서 들어가세요. 친구들과 번갈아 가며 멋진 릴레이 소설을 완성해 보세요!
       </div>
       <div class="room-grid" id="room-grid"></div>
     </section>
 
-    <!-- 2. 소설 상세 화면 -->
+    <!-- 2. 소설 방 상세 -->
     <section id="novel-detail-view">
       <div class="novel-container" id="novel-scroll-box">
         <div class="novel-meta">
@@ -264,13 +251,8 @@
             <h2 id="current-room-title" style="display:inline; margin-right: 0.5rem;">1번 방 이야기</h2>
             <span id="line-count" class="room-count">0개 문장</span>
           </div>
-
-          <!-- [관리자 기능 2] 해당 방의 모든 글 일괄 삭제 버튼 -->
-          <button id="btn-delete-room" class="btn btn-danger admin-only" onclick="confirmDeleteRoom()">
-            🗑️ 이 방 이야기 전체 삭제
-          </button>
+          <button id="btn-delete-room" class="btn btn-danger admin-only" onclick="confirmDeleteRoom()">🗑️ 이 방 전체 삭제</button>
         </div>
-
         <div class="novel-entries" id="novel-entries"></div>
       </div>
 
@@ -287,10 +269,8 @@
   </main>
 
   <script>
-    // ★★★ [선생님 설정 1] 구글 웹 앱 URL을 따옴표 안에 넣어주세요 ★★★
+    // ★★★ [선생님 확인] 구글 스프레드시트 배포 URL을 넣어주세요 ★★★
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzI8f4L2gWo8xAoB3nSfD5CpTehIdMRf2UW16KU8oGhGhFlaBJZ8WJRf4m0H7QBWoHeQ/exec";
-
-    // ★★★ [선생님 설정 2] 관리자 비밀번호 (선생님만 아는 번호로 변경 가능) ★★★
     const ADMIN_PASSWORD = "1234";
 
     const TOTAL_ROOMS = 26;
@@ -298,10 +278,9 @@
     let novelData = {};
     let isAdmin = false;
 
-    // 즉시 26개 방 렌더링
+    // 초기 실행: 서버 연결과 무관하게 방 카드는 무조건 즉시 화면에 그림
     renderRoomList();
 
-    // ================= [관리자 권한 토글] =================
     function toggleAdminMode() {
       if (isAdmin) {
         isAdmin = false;
@@ -318,7 +297,7 @@
           document.getElementById("btn-admin-toggle").innerText = "🔓 관리자 On";
           document.getElementById("btn-admin-toggle").classList.add("active");
           document.getElementById("admin-banner").style.display = "flex";
-          alert("관리자 모드로 접속했습니다. 삭제 권한이 부여되었습니다.");
+          alert("관리자 권한이 켜졌습니다.");
         } else if (pw !== null) {
           alert("비밀번호가 일치하지 않습니다!");
         }
@@ -326,29 +305,30 @@
       if (currentRoom) renderNovelEntries();
     }
 
-    // ================= [데이터 조회 (JSONP)] =================
+    // JSONP 방식으로 안전하게 구글 데이터 읽어오기
     function fetchData() {
       if (!SCRIPT_URL || SCRIPT_URL.includes("여기에_복사한")) {
-        document.getElementById("sync-indicator").innerText = "⚠️ 구글 시트 URL 필요";
+        document.getElementById("sync-indicator").innerText = "⚠️ 구글 웹앱 URL 미설정";
         return;
       }
 
-      const oldScript = document.getElementById("jsonp-loader");
-      if (oldScript) oldScript.remove();
+      const old = document.getElementById("script-jsonp");
+      if (old) old.remove();
 
       const script = document.createElement("script");
-      script.id = "jsonp-loader";
-      script.src = SCRIPT_URL + (SCRIPT_URL.includes("?") ? "&" : "?") + "callback=onDataLoaded&t=" + Date.now();
+      script.id = "script-jsonp";
+      const sep = SCRIPT_URL.includes("?") ? "&" : "?";
+      script.src = SCRIPT_URL + sep + "callback=loadDataCallback&_nocache=" + Date.now();
       script.onerror = function() {
-        document.getElementById("sync-indicator").innerText = "🔴 연결 재시도 중...";
+        document.getElementById("sync-indicator").innerText = "🔴 구글 연결 확인 필요";
       };
       document.body.appendChild(script);
     }
 
-    window.onDataLoaded = function(data) {
+    // 구글 스크립트 응답 콜백
+    window.loadDataCallback = function(data) {
       novelData = data || {};
       document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
-
       if (currentRoom) {
         renderNovelEntries();
       } else {
@@ -358,10 +338,11 @@
 
     function renderRoomList() {
       const container = document.getElementById("room-grid");
+      if (!container) return;
       container.innerHTML = "";
 
       for (let i = 1; i <= TOTAL_ROOMS; i++) {
-        const count = novelData[i] ? novelData[i].length : 0;
+        const count = (novelData && novelData[i]) ? novelData[i].length : 0;
         const card = document.createElement("div");
         card.className = "room-card";
         card.onclick = () => openRoom(i);
@@ -396,13 +377,13 @@
       renderRoomList();
     }
 
-    // [기능 1 포함] 문장 목록 렌더링 (관리자 모드 시 우측에 개별 삭제 버튼 표시)
     function renderNovelEntries() {
       const container = document.getElementById("novel-entries");
       const lineCountBadge = document.getElementById("line-count");
+      if (!container) return;
       container.innerHTML = "";
 
-      const entries = novelData[currentRoom] || [];
+      const entries = (novelData && novelData[currentRoom]) ? novelData[currentRoom] : [];
       lineCountBadge.innerText = `${entries.length}개 문장`;
 
       if (entries.length === 0) {
@@ -413,16 +394,12 @@
       entries.forEach((item) => {
         const row = document.createElement("div");
         row.className = "novel-entry";
-        
-        // 개별 삭제 버튼 (관리자 전용 클래스)
-        const delBtnHtml = isAdmin 
-          ? `<button class="btn-del-sm" onclick="deleteSingleLine(${item.rowId})">삭제</button>` 
-          : '';
+        const delBtn = isAdmin ? `<button class="btn-del-sm" onclick="deleteSingleLine(${item.rowId})">삭제</button>` : '';
 
         row.innerHTML = `
           <span class="entry-author">${escapeHtml(item.name)}</span>
           <span class="entry-text">${escapeHtml(item.text)}</span>
-          ${delBtnHtml}
+          ${delBtn}
         `;
         container.appendChild(row);
       });
@@ -431,57 +408,36 @@
       scrollBox.scrollTop = scrollBox.scrollHeight;
     }
 
-    // ================= [삭제 기능 액션들] =================
-
-    // 1. 개별 한 줄 삭제
-    async function deleteSingleLine(rowId) {
-      if (!confirm("이 문장을 정말 삭제하시겠습니까?")) return;
-      await postToServer({ action: "delete_single", rowId: rowId });
-    }
-
-    // 2. 현재 방 전체 글 삭제
-    async function confirmDeleteRoom() {
-      if (!confirm(`정말 [${currentRoom}번 방]의 모든 이야기를 삭제하시겠습니까? (복구 불가)`)) return;
-      await postToServer({ action: "delete_room", room: currentRoom });
-    }
-
-    // 3. 전체 방 모든 글 한꺼번에 삭제 (초기화)
-    async function confirmDeleteAll() {
-      const check = prompt("경고: 1번부터 26번까지 모든 방의 글이 전부 지워집니다!\n정말 초기화하시려면 '초기화'를 입력하세요:");
-      if (check === "초기화") {
-        await postToServer({ action: "delete_all" });
+    // 서버에 전송 (no-cors 폼 인코딩 방식)
+    async function sendCommand(dataObj) {
+      if (!SCRIPT_URL || SCRIPT_URL.includes("여기에_복사한")) {
+        alert("구글 웹앱 URL이 설정되지 않았습니다.");
+        return;
       }
-    }
 
-  // 서버 통신 공통 함수 (URLSearchParams 폼 전송 방식)
-    async function postToServer(payload) {
       document.getElementById("sync-indicator").innerText = "저장 중...";
-      try {
-        const formData = new URLSearchParams();
-        for (const key in payload) {
-          formData.append(key, payload[key]);
-        }
+      const params = new URLSearchParams();
+      for (const k in dataObj) {
+        params.append(k, dataObj[k]);
+      }
 
+      try {
         await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData.toString()
+          body: params.toString()
         });
-
-        // 1.5초 후 서버 최신 데이터 재동기화
-        setTimeout(fetchData, 1500);
-      } catch (err) {
-        console.error(err);
-        alert("요청 중 오류가 발생했습니다.");
+        setTimeout(fetchData, 1200);
+      } catch (e) {
+        alert("전송 중 네트워크 오류가 발생했습니다.");
       }
     }
 
-    // 새 글 등록
     async function submitLine() {
       const nameInput = document.getElementById("input-name");
       const lineInput = document.getElementById("input-line");
-      const submitBtn = document.getElementById("btn-submit");
+      const btn = document.getElementById("btn-submit");
 
       const name = nameInput.value.trim();
       const text = lineInput.value.trim();
@@ -489,17 +445,50 @@
       if (!name) { alert("이름(또는 번호)을 입력하세요!"); nameInput.focus(); return; }
       if (!text) { alert("소설 내용을 입력하세요!"); lineInput.focus(); return; }
 
-      submitBtn.disabled = true;
-      submitBtn.innerText = "등록 중...";
+      btn.disabled = true;
+      btn.innerText = "등록 중...";
 
-      await postToServer({
-        action: "add",
-        room: currentRoom,
-        name: name,
-        text: text
-      });
+      // 화면에 즉시 임시 표시 (반응속도 향상)
+      if (!novelData[currentRoom]) novelData[currentRoom] = [];
+      novelData[currentRoom].push({ name: name, text: text, rowId: 99999 });
+      renderNovelEntries();
+
+      await sendCommand({ action: "add", room: currentRoom, name: name, text: text });
 
       lineInput.value = "";
-      submitBtn.disabled = false;
-      submitBtn.innerText = "한 줄 이어쓰기 ✍️";
+      btn.disabled = false;
+      btn.innerText = "한 줄 이어쓰기 ✍️";
+      lineInput.focus();
     }
+
+    async function deleteSingleLine(rowId) {
+      if (!confirm("이 문장을 삭제하시겠습니까?")) return;
+      await sendCommand({ action: "delete_single", rowId: rowId });
+    }
+
+    async function confirmDeleteRoom() {
+      if (!confirm(`정말 [${currentRoom}번 방]의 모든 이야기를 삭제하시겠습니까?`)) return;
+      await sendCommand({ action: "delete_room", room: currentRoom });
+    }
+
+    async function confirmDeleteAll() {
+      const chk = prompt("전체 방의 모든 소설이 영구 삭제됩니다!\n진행하시려면 '초기화'를 입력하세요:");
+      if (chk === "초기화") {
+        await sendCommand({ action: "delete_all" });
+      }
+    }
+
+    document.getElementById("input-line").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitLine();
+    });
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // 주기적 동기화
+    fetchData();
+    setInterval(fetchData, 4000);
+  </script>
+</body>
+</html>
