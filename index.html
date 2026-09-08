@@ -8,6 +8,8 @@
     :root {
       --primary: #4f46e5;
       --primary-hover: #4338ca;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --text: #1e293b;
@@ -21,48 +23,86 @@
     header {
       background: #ffffff;
       border-bottom: 1px solid var(--border);
-      padding: 1.2rem 2rem;
+      padding: 1rem 1.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
       position: sticky;
       top: 0;
       z-index: 10;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
 
     header h1 { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
 
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+
     .btn {
-      padding: 0.6rem 1.2rem;
+      padding: 0.5rem 1rem;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
       border: none;
       transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
     }
     .btn-back { background: #e2e8f0; color: #334155; }
     .btn-back:hover { background: #cbd5e1; }
     .btn-primary { background: var(--primary); color: #ffffff; }
     .btn-primary:hover { background: var(--primary-hover); }
-    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-danger { background: var(--danger); color: #ffffff; }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-admin { background: #334155; color: #ffffff; }
+    .btn-admin:hover { background: #1e293b; }
+    .btn-admin.active { background: #059669; }
 
-    main { flex: 1; max-width: 900px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; }
+    .btn-del-sm {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .btn-del-sm:hover { background: #fca5a5; }
+
+    main { flex: 1; max-width: 950px; width: 100%; margin: 0 auto; padding: 1.5rem 1rem; }
 
     .info-box {
       background: #eef2ff;
       border: 1px solid #c7d2fe;
       border-radius: 12px;
-      padding: 1rem 1.5rem;
-      margin-bottom: 1.5rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
       color: #3730a3;
       font-size: 0.95rem;
       line-height: 1.5;
     }
 
+    /* 관리자 알림 배너 */
+    .admin-banner {
+      display: none;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 1. 메인 26개 방 그리드 */
     .room-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
       gap: 1rem;
     }
 
@@ -79,7 +119,6 @@
       align-items: center;
       gap: 0.3rem;
     }
-
     .room-card:hover {
       transform: translateY(-3px);
       border-color: var(--primary);
@@ -90,6 +129,7 @@
     .room-label { font-size: 0.9rem; font-weight: 600; }
     .room-count { font-size: 0.75rem; color: var(--text-muted); background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
 
+    /* 2. 소설 상세 뷰 */
     #novel-detail-view { display: none; }
 
     .novel-container {
@@ -97,9 +137,9 @@
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      min-height: 250px;
-      max-height: 50vh;
+      margin-bottom: 1.25rem;
+      min-height: 260px;
+      max-height: 52vh;
       overflow-y: auto;
     }
 
@@ -110,6 +150,8 @@
       border-bottom: 2px solid var(--border);
       padding-bottom: 0.8rem;
       margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
 
     .novel-entries { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -121,7 +163,7 @@
       border-radius: 0 8px 8px 0;
       display: flex;
       gap: 0.75rem;
-      align-items: flex-start;
+      align-items: center;
       line-height: 1.5;
     }
 
@@ -129,13 +171,14 @@
       font-weight: 700;
       color: var(--primary);
       background: #e0e7ff;
-      padding: 0.1rem 0.5rem;
+      padding: 0.15rem 0.5rem;
       border-radius: 4px;
       font-size: 0.85rem;
       white-space: nowrap;
     }
 
     .entry-text { flex: 1; font-size: 1rem; }
+
     .empty-state { text-align: center; color: var(--text-muted); padding: 3rem 0; font-size: 0.95rem; }
 
     .input-form-box {
@@ -167,10 +210,11 @@
 
     .input-author:focus, .input-content:focus { border-color: var(--primary); }
 
-    .sync-status {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
+    .sync-status { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* 관리자 전용 삭제 버튼 (기본 숨김) */
+    .admin-only { display: none !important; }
+    body.is-admin .admin-only { display: inline-flex !important; }
 
     @media (max-width: 600px) {
       .form-row { flex-direction: column; }
@@ -182,13 +226,29 @@
 
   <header>
     <h1 id="page-title">📖 우리 반 릴레이 소설 방</h1>
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <div class="header-actions">
       <span id="sync-indicator" class="sync-status">🔄 연결 중...</span>
+      
+      <!-- [관리자 기능 3] 전체 글 일괄 삭제 버튼 (메인화면 관리자 전용) -->
+      <button id="btn-delete-all" class="btn btn-danger admin-only" onclick="confirmDeleteAll()">
+        🗑️ 전체 소설 완전 초기화
+      </button>
+
+      <!-- 관리자 모드 On/Off 토글 버튼 -->
+      <button id="btn-admin-toggle" class="btn btn-admin" onclick="toggleAdminMode()">🔒 관리자 모드</button>
+      
       <button id="btn-back" class="btn btn-back" style="display: none;" onclick="goHome()">← 방 목록</button>
     </div>
   </header>
 
   <main>
+    <!-- 관리자 로그인 알림 배너 -->
+    <div id="admin-banner" class="admin-banner">
+      <span>⚙️ <strong>관리자 모드 활성화됨:</strong> 글 개별 삭제 및 방 전체 삭제 권한이 활성화되었습니다.</span>
+      <button class="btn-del-sm" onclick="toggleAdminMode()">관리자 끄기</button>
+    </div>
+
+    <!-- 1. 방 목록 화면 -->
     <section id="room-list-view">
       <div class="info-box">
         💡 <strong>이용 방법:</strong> 원하는 방을 선택해서 들어가세요. 자동으로 다른 친구들의 글이 실시간 업데이트됩니다!
@@ -196,12 +256,21 @@
       <div class="room-grid" id="room-grid"></div>
     </section>
 
+    <!-- 2. 소설 상세 화면 -->
     <section id="novel-detail-view">
       <div class="novel-container" id="novel-scroll-box">
         <div class="novel-meta">
-          <h2 id="current-room-title">1번 방 이야기</h2>
-          <span id="line-count" class="room-count">0개 문장</span>
+          <div>
+            <h2 id="current-room-title" style="display:inline; margin-right: 0.5rem;">1번 방 이야기</h2>
+            <span id="line-count" class="room-count">0개 문장</span>
+          </div>
+
+          <!-- [관리자 기능 2] 해당 방의 모든 글 일괄 삭제 버튼 -->
+          <button id="btn-delete-room" class="btn btn-danger admin-only" onclick="confirmDeleteRoom()">
+            🗑️ 이 방 이야기 전체 삭제
+          </button>
         </div>
+
         <div class="novel-entries" id="novel-entries"></div>
       </div>
 
@@ -218,24 +287,52 @@
   </main>
 
   <script>
-    // ★★★ [선생님 설정] 구글 웹 앱 URL을 따옴표 안에 넣어주세요 ★★★
+    // ★★★ [선생님 설정 1] 구글 웹 앱 URL을 따옴표 안에 넣어주세요 ★★★
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzI8f4L2gWo8xAoB3nSfD5CpTehIdMRf2UW16KU8oGhGhFlaBJZ8WJRf4m0H7QBWoHeQ/exec";
+
+    // ★★★ [선생님 설정 2] 관리자 비밀번호 (선생님만 아는 번호로 변경 가능) ★★★
+    const ADMIN_PASSWORD = "1234";
 
     const TOTAL_ROOMS = 26;
     let currentRoom = null;
     let novelData = {};
+    let isAdmin = false;
 
-    // 1. 페이지 로딩 즉시 26개 방을 화면에 먼저 출력
+    // 즉시 26개 방 렌더링
     renderRoomList();
 
-    // 2. JSONP 방식으로 데이터 안전하게 불러오기 (CORS 우회)
+    // ================= [관리자 권한 토글] =================
+    function toggleAdminMode() {
+      if (isAdmin) {
+        isAdmin = false;
+        document.body.classList.remove("is-admin");
+        document.getElementById("btn-admin-toggle").innerText = "🔒 관리자 모드";
+        document.getElementById("btn-admin-toggle").classList.remove("active");
+        document.getElementById("admin-banner").style.display = "none";
+        alert("관리자 모드가 해제되었습니다.");
+      } else {
+        const pw = prompt("관리자 비밀번호를 입력하세요:");
+        if (pw === ADMIN_PASSWORD) {
+          isAdmin = true;
+          document.body.classList.add("is-admin");
+          document.getElementById("btn-admin-toggle").innerText = "🔓 관리자 On";
+          document.getElementById("btn-admin-toggle").classList.add("active");
+          document.getElementById("admin-banner").style.display = "flex";
+          alert("관리자 모드로 접속했습니다. 삭제 권한이 부여되었습니다.");
+        } else if (pw !== null) {
+          alert("비밀번호가 일치하지 않습니다!");
+        }
+      }
+      if (currentRoom) renderNovelEntries();
+    }
+
+    // ================= [데이터 조회 (JSONP)] =================
     function fetchData() {
       if (!SCRIPT_URL || SCRIPT_URL.includes("여기에_복사한")) {
         document.getElementById("sync-indicator").innerText = "⚠️ 구글 시트 URL 필요";
         return;
       }
 
-      // 기존 임시 스크립트 태그 정리
       const oldScript = document.getElementById("jsonp-loader");
       if (oldScript) oldScript.remove();
 
@@ -248,7 +345,6 @@
       document.body.appendChild(script);
     }
 
-    // JSONP 응답 콜백 함수
     window.onDataLoaded = function(data) {
       novelData = data || {};
       document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
@@ -300,6 +396,7 @@
       renderRoomList();
     }
 
+    // [기능 1 포함] 문장 목록 렌더링 (관리자 모드 시 우측에 개별 삭제 버튼 표시)
     function renderNovelEntries() {
       const container = document.getElementById("novel-entries");
       const lineCountBadge = document.getElementById("line-count");
@@ -316,9 +413,16 @@
       entries.forEach((item) => {
         const row = document.createElement("div");
         row.className = "novel-entry";
+        
+        // 개별 삭제 버튼 (관리자 전용 클래스)
+        const delBtnHtml = isAdmin 
+          ? `<button class="btn-del-sm" onclick="deleteSingleLine(${item.rowId})">삭제</button>` 
+          : '';
+
         row.innerHTML = `
           <span class="entry-author">${escapeHtml(item.name)}</span>
           <span class="entry-text">${escapeHtml(item.text)}</span>
+          ${delBtnHtml}
         `;
         container.appendChild(row);
       });
@@ -327,6 +431,45 @@
       scrollBox.scrollTop = scrollBox.scrollHeight;
     }
 
+    // ================= [삭제 기능 액션들] =================
+
+    // 1. 개별 한 줄 삭제
+    async function deleteSingleLine(rowId) {
+      if (!confirm("이 문장을 정말 삭제하시겠습니까?")) return;
+      await postToServer({ action: "delete_single", rowId: rowId });
+    }
+
+    // 2. 현재 방 전체 글 삭제
+    async function confirmDeleteRoom() {
+      if (!confirm(`정말 [${currentRoom}번 방]의 모든 이야기를 삭제하시겠습니까? (복구 불가)`)) return;
+      await postToServer({ action: "delete_room", room: currentRoom });
+    }
+
+    // 3. 전체 방 모든 글 한꺼번에 삭제 (초기화)
+    async function confirmDeleteAll() {
+      const check = prompt("경고: 1번부터 26번까지 모든 방의 글이 전부 지워집니다!\n정말 초기화하시려면 '초기화'를 입력하세요:");
+      if (check === "초기화") {
+        await postToServer({ action: "delete_all" });
+      }
+    }
+
+    // 서버 통신 공통 함수
+    async function postToServer(payload) {
+      document.getElementById("sync-indicator").innerText = "처리 중...";
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        setTimeout(fetchData, 1200);
+      } catch (err) {
+        alert("요청 중 오류가 발생했습니다.");
+      }
+    }
+
+    // ================= [새 글 등록] =================
     async function submitLine() {
       const nameInput = document.getElementById("input-name");
       const lineInput = document.getElementById("input-line");
@@ -347,20 +490,17 @@
           mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            action: "add",
             room: currentRoom,
             name: name,
             text: text
           })
         });
 
-        if (!novelData[currentRoom]) novelData[currentRoom] = [];
-        novelData[currentRoom].push({ name, text });
-        renderNovelEntries();
-
         lineInput.value = "";
         setTimeout(fetchData, 1200);
       } catch (err) {
-        alert("등록 중 문제가 발생했습니다. 다시 시도해 주세요.");
+        alert("등록 중 문제가 발생했습니다.");
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "한 줄 이어쓰기 ✍️";
@@ -375,7 +515,7 @@
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    // 4초마다 자동 갱신
+    // 4초마다 실시간 자동 동기화
     fetchData();
     setInterval(fetchData, 4000);
   </script>
