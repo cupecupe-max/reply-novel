@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>우리 반 릴레이 소설 방 📚</title>
+  <!-- Supabase 공식 라이브러리 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --primary: #4f46e5;
@@ -174,7 +176,7 @@
       white-space: nowrap;
     }
 
-    .entry-text { flex: 1; font-size: 1rem; }
+    .entry-text { flex: 1; font-size: 1rem; word-break: break-word; }
     .empty-state { text-align: center; color: var(--text-muted); padding: 3rem 0; font-size: 0.95rem; }
 
     .input-form-box {
@@ -205,7 +207,7 @@
     }
 
     .input-author:focus, .input-content:focus { border-color: var(--primary); }
-    .sync-status { font-size: 0.8rem; color: #16a34a; font-weight: 600; }
+    .sync-status { font-size: 0.8rem; font-weight: 600; color: #16a34a; }
 
     .admin-only { display: none !important; }
     body.is-admin .admin-only { display: inline-flex !important; }
@@ -221,7 +223,7 @@
   <header>
     <h1 id="page-title">📖 우리 반 릴레이 소설 방</h1>
     <div class="header-actions">
-      <span id="sync-indicator" class="sync-status">🟢 실시간 연결됨</span>
+      <span id="sync-indicator" class="sync-status">🟢 실시간 DB 연결됨</span>
       <button id="btn-delete-all" class="btn btn-danger admin-only" onclick="confirmDeleteAll()">🗑️ 전체 초기화</button>
       <button id="btn-admin-toggle" class="btn btn-admin" onclick="toggleAdminMode()">🔒 관리자 모드</button>
       <button id="btn-back" class="btn btn-back" style="display: none;" onclick="goHome()">← 방 목록</button>
@@ -230,17 +232,19 @@
 
   <main>
     <div id="admin-banner" class="admin-banner">
-      <span>⚙️ <strong>관리자 모드 실행 중:</strong> 글 개별 삭제 및 전체 삭제 권한이 켜져 있습니다.</span>
+      <span>⚙️ <strong>관리자 모드 실행 중:</strong> 글 개별 삭제 및 전체 삭제 권한이 활성화되었습니다.</span>
       <button class="btn-del-sm" onclick="toggleAdminMode()">관리자 끄기</button>
     </div>
 
+    <!-- 1. 메인 26개 방 목록 -->
     <section id="room-list-view">
       <div class="info-box">
-        💡 <strong>이용 방법:</strong> 내 번호 방을 선택해서 들어가세요. 친구들과 번갈아 가며 한 줄씩 소설을 완성해 보세요!
+        💡 <strong>이용 방법:</strong> 내 번호 방을 선택해 들어가세요. 친구들과 번갈아 가며 한 줄씩 릴레이 소설을 완성해 보세요!
       </div>
       <div class="room-grid" id="room-grid"></div>
     </section>
 
+    <!-- 2. 소설 방 상세 -->
     <section id="novel-detail-view">
       <div class="novel-container" id="novel-scroll-box">
         <div class="novel-meta">
@@ -266,97 +270,64 @@
   </main>
 
   <script>
-    // 독립형 실시간 클라우드 DB 엔드포인트
-    const BIN_ID = "66dbba71acd3cb34a87e0766";
-    const API_KEY = "$2a$10$tZ/GjA6krh0wG2hGj0E0z.E0mK6x.N5a5R4kM8l1oXy3wN.tD6xeq";
-    const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    // 공개 실시간 데이터베이스 (누구나 읽기/쓰기 허용된 교실용 전용 DB)
+    const SB_URL = "https://wzftvbbimkcxezmmswsq.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6ZnR2YmJpbWtjeGV6bW1zd3NxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyMTk4MjMsImV4cCI6MjA1Njc5NTgyM30.K9xU_1N57s6q6wK4kLzYqO8V8L0pL3w0y9Wk4fX1zZg";
+    
+    // Supabase 클라이언트 생성
+    const client = supabase.createClient(SB_URL, SB_KEY);
     const ADMIN_PASSWORD = "1234";
-
     const TOTAL_ROOMS = 26;
+
     let currentRoom = null;
-    let novelData = {};
+    let allEntries = [];
     let isAdmin = false;
 
-    // 초기 방 목록 즉시 출력
+    // 초기 실행
     renderRoomList();
+    fetchRemoteData();
 
-    // ================= [관리자 모드] =================
-    function toggleAdminMode() {
-      if (isAdmin) {
-        isAdmin = false;
-        document.body.classList.remove("is-admin");
-        document.getElementById("btn-admin-toggle").innerText = "🔒 관리자 모드";
-        document.getElementById("btn-admin-toggle").classList.remove("active");
-        document.getElementById("admin-banner").style.display = "none";
-        alert("관리자 모드가 해제되었습니다.");
-      } else {
-        const pw = prompt("관리자 비밀번호를 입력하세요:");
-        if (pw === ADMIN_PASSWORD) {
-          isAdmin = true;
-          document.body.classList.add("is-admin");
-          document.getElementById("btn-admin-toggle").innerText = "🔓 관리자 On";
-          document.getElementById("btn-admin-toggle").classList.add("active");
-          document.getElementById("admin-banner").style.display = "flex";
-          alert("관리자 권한이 켜졌습니다. (삭제 기능 활성화)");
-        } else if (pw !== null) {
-          alert("비밀번호가 일치하지 않습니다.");
-        }
-      }
-      if (currentRoom) renderNovelEntries();
-    }
+    // 2초마다 다른 노트북 작성 글 자동 동기화
+    setInterval(fetchRemoteData, 2000);
 
-    // ================= [클라우드 데이터 동기화] =================
-    async function loadData() {
+    // ================= [데이터 조회] =================
+    async function fetchRemoteData() {
       try {
-        const res = await fetch(`${API_URL}/latest`, {
-          headers: { "X-Access-Key": API_KEY }
-        });
-        if (res.ok) {
-          const json = await res.json();
-          novelData = json.record || {};
-          document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
-          if (currentRoom) {
-            renderNovelEntries();
-          } else {
-            renderRoomList();
-          }
+        const { data, error } = await client
+          .from('relay_novel')
+          .select('*')
+          .order('id', { ascending: true });
+
+        if (error) throw error;
+
+        allEntries = data || [];
+        document.getElementById("sync-indicator").innerText = "🟢 실시간 DB 연결됨";
+
+        if (currentRoom) {
+          renderNovelEntries();
+        } else {
+          renderRoomList();
         }
       } catch (err) {
-        document.getElementById("sync-indicator").innerText = "🟡 동기화 대기 중...";
+        document.getElementById("sync-indicator").innerText = "🟡 연결 확인 중...";
       }
     }
 
-    async function syncToServer() {
-      document.getElementById("sync-indicator").innerText = "저장 중...";
-      try {
-        await fetch(API_URL, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Access-Key": API_KEY
-          },
-          body: JSON.stringify(novelData)
-        });
-        document.getElementById("sync-indicator").innerText = "🟢 저장 완료";
-      } catch (e) {
-        document.getElementById("sync-indicator").innerText = "🔴 저장 재시도 중";
-      }
-    }
-
+    // ================= [화면 렌더링] =================
     function renderRoomList() {
       const container = document.getElementById("room-grid");
       if (!container) return;
       container.innerHTML = "";
 
       for (let i = 1; i <= TOTAL_ROOMS; i++) {
-        const list = novelData[i] || [];
+        const count = allEntries.filter(item => item.room === i).length;
         const card = document.createElement("div");
         card.className = "room-card";
         card.onclick = () => openRoom(i);
         card.innerHTML = `
           <div class="room-number">${i}</div>
           <div class="room-label">${i}번 방</div>
-          <div class="room-count">${list.length}문장 이어짐</div>
+          <div class="room-count">${count}문장 이어짐</div>
         `;
         container.appendChild(card);
       }
@@ -390,18 +361,20 @@
       if (!container) return;
       container.innerHTML = "";
 
-      const list = novelData[currentRoom] || [];
-      lineCountBadge.innerText = `${list.length}개 문장`;
+      const currentList = allEntries.filter(item => item.room === currentRoom);
+      lineCountBadge.innerText = `${currentList.length}개 문장`;
 
-      if (list.length === 0) {
+      if (currentList.length === 0) {
         container.innerHTML = `<div class="empty-state">아직 작성된 이야기가 없어요!<br>첫 문장을 적어 이야기를 시작해 보세요 ✨</div>`;
         return;
       }
 
-      list.forEach((item, index) => {
+      currentList.forEach((item) => {
         const row = document.createElement("div");
         row.className = "novel-entry";
-        const delBtn = isAdmin ? `<button class="btn-del-sm" onclick="deleteSingleLine(${index})">삭제</button>` : '';
+        const delBtn = isAdmin 
+          ? `<button class="btn-del-sm" onclick="deleteSingleLine(${item.id})">삭제</button>` 
+          : '';
 
         row.innerHTML = `
           <span class="entry-author">${escapeHtml(item.name)}</span>
@@ -415,7 +388,7 @@
       scrollBox.scrollTop = scrollBox.scrollHeight;
     }
 
-    // ================= [새 글 등록] =================
+    // ================= [새 글 작성] =================
     async function submitLine() {
       const nameInput = document.getElementById("input-name");
       const lineInput = document.getElementById("input-line");
@@ -428,47 +401,72 @@
       if (!text) { alert("소설 내용을 입력하세요!"); lineInput.focus(); return; }
 
       btn.disabled = true;
+      btn.innerText = "저장 중...";
 
-      // 1. 화면에 즉시 표시 (지연 없음)
-      if (!novelData[currentRoom]) novelData[currentRoom] = [];
-      novelData[currentRoom].push({ name, text, time: Date.now() });
-      renderNovelEntries();
+      try {
+        const { error } = await client
+          .from('relay_novel')
+          .insert([{ room: currentRoom, name: name, text: text }]);
 
-      lineInput.value = "";
-      btn.disabled = false;
-      lineInput.focus();
+        if (error) throw error;
 
-      // 2. 클라우드 DB에 즉시 영구 저장
-      await syncToServer();
+        lineInput.value = "";
+        await fetchRemoteData();
+      } catch (err) {
+        alert("글 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "한 줄 이어쓰기 ✍️";
+        lineInput.focus();
+      }
     }
 
-    // ================= [삭제 기능 3종] =================
-    // 1. 개별 글 삭제
-    async function deleteSingleLine(index) {
+    // ================= [관리자 기능 3종] =================
+    function toggleAdminMode() {
+      if (isAdmin) {
+        isAdmin = false;
+        document.body.classList.remove("is-admin");
+        document.getElementById("btn-admin-toggle").innerText = "🔒 관리자 모드";
+        document.getElementById("btn-admin-toggle").classList.remove("active");
+        document.getElementById("admin-banner").style.display = "none";
+        alert("관리자 모드가 꺼졌습니다.");
+      } else {
+        const pw = prompt("관리자 비밀번호를 입력하세요:");
+        if (pw === ADMIN_PASSWORD) {
+          isAdmin = true;
+          document.body.classList.add("is-admin");
+          document.getElementById("btn-admin-toggle").innerText = "🔓 관리자 On";
+          document.getElementById("btn-admin-toggle").classList.add("active");
+          document.getElementById("admin-banner").style.display = "flex";
+          alert("관리자 모드가 활성화되었습니다.");
+        } else if (pw !== null) {
+          alert("비밀번호가 일치하지 않습니다.");
+        }
+      }
+      if (currentRoom) renderNovelEntries();
+    }
+
+    // 1. 한 줄 개별 삭제
+    async function deleteSingleLine(id) {
       if (!confirm("이 문장을 삭제하시겠습니까?")) return;
-      novelData[currentRoom].splice(index, 1);
-      renderNovelEntries();
-      await syncToServer();
+      await client.from('relay_novel').delete().eq('id', id);
+      await fetchRemoteData();
     }
 
     // 2. 방 전체 삭제
     async function confirmDeleteRoom() {
       if (!confirm(`정말 [${currentRoom}번 방]의 모든 이야기를 삭제하시겠습니까?`)) return;
-      novelData[currentRoom] = [];
-      renderNovelEntries();
-      await syncToServer();
+      await client.from('relay_novel').delete().eq('room', currentRoom);
+      await fetchRemoteData();
     }
 
-    // 3. 전체 방 일괄 완전 초기화
+    // 3. 전체 방 모든 글 완전 초기화
     async function confirmDeleteAll() {
-      const chk = prompt("경고: 모든 방의 소설이 한꺼번에 삭제됩니다!\n진행하시려면 '초기화'를 입력하세요:");
+      const chk = prompt("모든 방의 글이 영구 삭제됩니다!\n진행하시려면 '초기화'를 입력하세요:");
       if (chk === "초기화") {
-        for (let r = 1; r <= TOTAL_ROOMS; r++) {
-          novelData[r] = [];
-        }
-        renderRoomList();
-        await syncToServer();
-        alert("모든 방이 깨끗이 초기화되었습니다.");
+        await client.from('relay_novel').delete().neq('id', 0);
+        await fetchRemoteData();
+        alert("모든 방이 초기화되었습니다.");
       }
     }
 
@@ -479,10 +477,6 @@
     function escapeHtml(str) {
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
-
-    // 2초마다 다른 학생 작성 내용 자동 동기화
-    loadData();
-    setInterval(loadData, 2000);
   </script>
 </body>
 </html>
