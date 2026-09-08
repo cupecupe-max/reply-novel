@@ -453,23 +453,31 @@
       }
     }
 
-    // 서버 통신 공통 함수
+  // 서버 통신 공통 함수 (URLSearchParams 폼 전송 방식)
     async function postToServer(payload) {
-      document.getElementById("sync-indicator").innerText = "처리 중...";
+      document.getElementById("sync-indicator").innerText = "저장 중...";
       try {
+        const formData = new URLSearchParams();
+        for (const key in payload) {
+          formData.append(key, payload[key]);
+        }
+
         await fetch(SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString()
         });
-        setTimeout(fetchData, 1200);
+
+        // 1.5초 후 서버 최신 데이터 재동기화
+        setTimeout(fetchData, 1500);
       } catch (err) {
+        console.error(err);
         alert("요청 중 오류가 발생했습니다.");
       }
     }
 
-    // ================= [새 글 등록] =================
+    // 새 글 등록
     async function submitLine() {
       const nameInput = document.getElementById("input-name");
       const lineInput = document.getElementById("input-line");
@@ -484,40 +492,14 @@
       submitBtn.disabled = true;
       submitBtn.innerText = "등록 중...";
 
-      try {
-        await fetch(SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "add",
-            room: currentRoom,
-            name: name,
-            text: text
-          })
-        });
+      await postToServer({
+        action: "add",
+        room: currentRoom,
+        name: name,
+        text: text
+      });
 
-        lineInput.value = "";
-        setTimeout(fetchData, 1200);
-      } catch (err) {
-        alert("등록 중 문제가 발생했습니다.");
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "한 줄 이어쓰기 ✍️";
-      }
+      lineInput.value = "";
+      submitBtn.disabled = false;
+      submitBtn.innerText = "한 줄 이어쓰기 ✍️";
     }
-
-    document.getElementById("input-line").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submitLine();
-    });
-
-    function escapeHtml(str) {
-      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
-    // 4초마다 실시간 자동 동기화
-    fetchData();
-    setInterval(fetchData, 4000);
-  </script>
-</body>
-</html>
