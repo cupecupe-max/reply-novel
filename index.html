@@ -60,7 +60,6 @@
       line-height: 1.5;
     }
 
-    /* 1. 방 목록 그리드 */
     .room-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -84,13 +83,13 @@
     .room-card:hover {
       transform: translateY(-3px);
       border-color: var(--primary);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
     .room-number { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
     .room-label { font-size: 0.9rem; font-weight: 600; }
     .room-count { font-size: 0.75rem; color: var(--text-muted); background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
 
-    /* 2. 소설 뷰 */
     #novel-detail-view { display: none; }
 
     .novel-container {
@@ -137,7 +136,6 @@
     }
 
     .entry-text { flex: 1; font-size: 1rem; }
-
     .empty-state { text-align: center; color: var(--text-muted); padding: 3rem 0; font-size: 0.95rem; }
 
     .input-form-box {
@@ -172,9 +170,6 @@
     .sync-status {
       font-size: 0.8rem;
       color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
     }
 
     @media (max-width: 600px) {
@@ -188,21 +183,19 @@
   <header>
     <h1 id="page-title">📖 우리 반 릴레이 소설 방</h1>
     <div style="display: flex; gap: 0.5rem; align-items: center;">
-      <span id="sync-indicator" class="sync-status">🔄 데이터 불러오는 중...</span>
+      <span id="sync-indicator" class="sync-status">🔄 연결 중...</span>
       <button id="btn-back" class="btn btn-back" style="display: none;" onclick="goHome()">← 방 목록</button>
     </div>
   </header>
 
   <main>
-    <!-- 1. 방 목록 -->
     <section id="room-list-view">
       <div class="info-box">
-        💡 <strong>이용 방법:</strong> 원하는 방을 선택해서 들어가세요. 5초마다 자동으로 친구들이 쓴 새 문장이 업데이트됩니다!
+        💡 <strong>이용 방법:</strong> 원하는 방을 선택해서 들어가세요. 자동으로 다른 친구들의 글이 실시간 업데이트됩니다!
       </div>
       <div class="room-grid" id="room-grid"></div>
     </section>
 
-    <!-- 2. 소설 상세 뷰 -->
     <section id="novel-detail-view">
       <div class="novel-container" id="novel-scroll-box">
         <div class="novel-meta">
@@ -225,36 +218,47 @@
   </main>
 
   <script>
-    // ★★★ [선생님 설정] 1단계에서 복사한 웹 앱 URL을 따옴표 안에 넣어주세요 ★★★
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyqSJBrRANhXekd0WOaHygokpJhJtwC4ZhRT71hZfruzNM0gXNaueA2KGjX1S9r87eoOg/exec";
+    // ★★★ [선생님 설정] 구글 웹 앱 URL을 따옴표 안에 넣어주세요 ★★★
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzI8f4L2gWo8xAoB3nSfD5CpTehIdMRf2UW16KU8oGhGhFlaBJZ8WJRf4m0H7QBWoHeQ/exec";
 
     const TOTAL_ROOMS = 26;
     let currentRoom = null;
     let novelData = {};
-    let pollingTimer = null;
 
-    // 서버에서 전체 데이터 불러오기
-    async function fetchData() {
+    // 1. 페이지 로딩 즉시 26개 방을 화면에 먼저 출력
+    renderRoomList();
+
+    // 2. JSONP 방식으로 데이터 안전하게 불러오기 (CORS 우회)
+    function fetchData() {
       if (!SCRIPT_URL || SCRIPT_URL.includes("여기에_복사한")) {
-        document.getElementById("sync-indicator").innerText = "⚠️ 구글 시트 URL을 설정해 주세요";
+        document.getElementById("sync-indicator").innerText = "⚠️ 구글 시트 URL 필요";
         return;
       }
 
-      try {
-        const res = await fetch(SCRIPT_URL);
-        novelData = await res.json();
-        document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
+      // 기존 임시 스크립트 태그 정리
+      const oldScript = document.getElementById("jsonp-loader");
+      if (oldScript) oldScript.remove();
 
-        if (currentRoom) {
-          renderNovelEntries();
-        } else {
-          renderRoomList();
-        }
-      } catch (err) {
-        console.error(err);
+      const script = document.createElement("script");
+      script.id = "jsonp-loader";
+      script.src = SCRIPT_URL + (SCRIPT_URL.includes("?") ? "&" : "?") + "callback=onDataLoaded&t=" + Date.now();
+      script.onerror = function() {
         document.getElementById("sync-indicator").innerText = "🔴 연결 재시도 중...";
-      }
+      };
+      document.body.appendChild(script);
     }
+
+    // JSONP 응답 콜백 함수
+    window.onDataLoaded = function(data) {
+      novelData = data || {};
+      document.getElementById("sync-indicator").innerText = "🟢 실시간 연결됨";
+
+      if (currentRoom) {
+        renderNovelEntries();
+      } else {
+        renderRoomList();
+      }
+    };
 
     function renderRoomList() {
       const container = document.getElementById("room-grid");
@@ -280,7 +284,7 @@
       document.getElementById("novel-detail-view").style.display = "block";
       document.getElementById("btn-back").style.display = "inline-block";
       document.getElementById("page-title").innerText = `📖 ${roomNum}번 방 릴레이 소설`;
-      document.getElementById("current-room-title").innerText = `${roomNum}번 방 릴레이 소설`;
+      document.getElementById("current-room-title").innerText = `${roomNum}번 방 이야기`;
 
       document.getElementById("input-line").value = "";
       renderNovelEntries();
@@ -305,7 +309,7 @@
       lineCountBadge.innerText = `${entries.length}개 문장`;
 
       if (entries.length === 0) {
-        container.innerHTML = `<div class="empty-state">아직 쓰여진 이야기가 없어요!<br>첫 문장을 적어 시작해 보세요 ✨</div>`;
+        container.innerHTML = `<div class="empty-state">아직 작성된 이야기가 없어요!<br>첫 문장을 적어 이야기를 시작해 보세요 ✨</div>`;
         return;
       }
 
@@ -340,7 +344,7 @@
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
-          mode: "no-cors", // Google Apps Script 전송을 위한 모드
+          mode: "no-cors",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             room: currentRoom,
@@ -349,13 +353,12 @@
           })
         });
 
-        // 로컬에 임시 추가 후 다시 동기화
         if (!novelData[currentRoom]) novelData[currentRoom] = [];
         novelData[currentRoom].push({ name, text });
         renderNovelEntries();
 
         lineInput.value = "";
-        setTimeout(fetchData, 1000); // 1초 뒤 최신 데이터 다시 받아오기
+        setTimeout(fetchData, 1200);
       } catch (err) {
         alert("등록 중 문제가 발생했습니다. 다시 시도해 주세요.");
       } finally {
@@ -372,9 +375,9 @@
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    // 5초마다 자동 동기화 (폴링)
+    // 4초마다 자동 갱신
     fetchData();
-    setInterval(fetchData, 5000);
+    setInterval(fetchData, 4000);
   </script>
 </body>
 </html>
